@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Literal, Self
 
 import jvm
@@ -239,36 +240,130 @@ from dataclasses import dataclass
 from typing import Self
 
 
-@dataclass(frozen=True)
+INT_MIN = -(2**31)
+INT_MAX = 2**31 - 1
+
+
+@dataclass(frozen=True, init=False)
 class Interval(Abstraction, Lattice):
-    min: int | None
-    max: int | None
+    min: int
+    max: int
+
+    def __init__(self, min: int | None, max: int | None):
+        lower = INT_MIN if min is None else min
+        upper = INT_MAX if max is None else max
+        if not isinstance(lower, int) or not isinstance(upper, int):
+            raise TypeError("Interval bounds must be integers or None")
+        lower = INT_MIN if lower < INT_MIN else lower
+        upper = INT_MAX if upper > INT_MAX else upper
+        if lower > upper:
+            lower, upper = 0, -1
+        object.__setattr__(self, "min", lower)
+        object.__setattr__(self, "max", upper)
+
+    @property
+    def is_empty(self) -> bool:
+        return self.min > self.max
 
     def __str__(self):
-        return f"{self.min if self.min is not None else '-inf'}:{self.max if self.max is not None else 'inf'}"
+        return f"{self.min}:{self.max}"
 
     def __sexpr__(self):
         return str(self)
 
     @classmethod
     def abstract(cls, values: Iterable[jvms.StackValue]) -> Self:
-        raise NotImplementedError("TODO")
+        lower, upper = INT_MAX, INT_MIN
+        for value in values:
+            if not isinstance(value, jvms.StackInt):
+                raise TypeError(f"Expected a StackInt, got {value!r}")
+            if not INT_MIN <= value.value <= INT_MAX:
+                raise ValueError(f"Not a signed 32-bit integer: {value.value}")
+            lower = min(lower, value.value)
+            upper = max(upper, value.value)
+        return cls(lower, upper)
 
     def __contains__(self, value: jvms.StackValue) -> bool:
-        raise NotImplementedError("TODO")
+        if not isinstance(value, jvms.StackInt):
+            return False
+        return self.min <= value.value <= self.max
 
     @classmethod
     def top(cls) -> Self:
-        raise NotImplementedError("TODO")
+        return cls(INT_MIN, INT_MAX)
 
     def __or__(self, other: "Interval") -> "Interval":
-        raise NotImplementedError("TODO")
+        if not isinstance(other, Interval):
+            return NotImplemented
+        if self.is_empty:
+            return other
+        if other.is_empty:
+            return self
+        return Interval(min(self.min, other.min), max(self.max, other.max))
 
     def __and__(self, other: "Interval") -> "Interval":
-        raise NotImplementedError("TODO")
+        if not isinstance(other, Interval):
+            return NotImplemented
+        if self.is_empty or other.is_empty:
+            return Interval.bot()
+        return Interval(max(self.min, other.min), min(self.max, other.max))
 
     def __lt__(self, other: "Interval") -> bool:
-        raise NotImplementedError("TODO")
+        if not isinstance(other, Interval):
+            return NotImplemented
+        return self != other and (
+            self.is_empty
+            or (
+                not other.is_empty
+                and other.min <= self.min
+                and self.max <= other.max
+            )
+        )
 
     def __gt__(self, other: "Interval") -> bool:
-        raise NotImplementedError("TODO")
+        if not isinstance(other, Interval):
+            return NotImplemented
+        return other < self
+
+    def arithmetic(
+        self, other: "Interval", opr: jvm.BinaryOpr
+    ) -> tuple["Interval", set[str]]:
+        if opr not in (jvm.BinaryOpr.Add, jvm.BinaryOpr.Sub):
+            raise NotImplementedError(f"Unsupported interval arithmetic: {opr}")
+        if self.is_empty or other.is_empty:
+            return (Interval.bot(), set())
+        if opr == jvm.BinaryOpr.Add:
+            lower = self.min + other.min
+            upper = self.max + other.max
+        else:
+            lower = self.min - other.max
+            upper = self.max - other.min
+        if lower < INT_MIN or upper > INT_MAX:
+            return (Interval.top(), set())
+        return (Interval(lower, upper), set())
+
+
+@dataclass(frozen=True)
+class Region:
+    bounds: Mapping[str, Interval]
+
+    def __post_init__(self):
+        bounds = dict(self.bounds)
+        if any(
+            not isinstance(name, str) or not isinstance(interval, Interval)
+            for name, interval in bounds.items()
+        ):
+            raise TypeError("Region bounds must map parameter names to intervals")
+        object.__setattr__(self, "bounds", MappingProxyType(bounds))
+
+    @property
+    def is_empty(self) -> bool:
+        return any(interval.is_empty for interval in self.bounds.values())
+
+    def __contains__(self, values: object) -> bool:
+        if not isinstance(values, Mapping) or values.keys() != self.bounds.keys():
+            return False
+        return all(
+            type(values[name]) is int and jvms.StackInt(values[name]) in interval
+            for name, interval in self.bounds.items()
+        )

@@ -39,3 +39,6 @@ jobs:
       - name: Run Python tests
         run: |
           uv run pytest
+      - name: Run interval and region foundation tests
+        run: |
+          uv run pytest -o "pythonpath=solutions/static/src src" solutions/static/tests/test_abstractions.py
