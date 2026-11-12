@@ -45,28 +45,43 @@ def check_verdicts(expected, problems):
         params, rows = load_observations(pair)
 
         if list(entry["domain"]) != params:
-            problems.append(f"{pair}: domain names {list(entry['domain'])} != CSV columns {params}")
+            problems.append(
+                f"{pair}: domain names {list(entry['domain'])} != CSV columns {params}"
+            )
 
         observed = {}
         for row in rows:
             if row["same"] == "no":
                 key = tuple(int(row[p]) for p in params)
-                observed[key] = {"original": side(row, "orig"), "edited": side(row, "edited")}
+                observed[key] = {
+                    "original": side(row, "orig"),
+                    "edited": side(row, "edited"),
+                }
 
         verdict = "changed" if observed else "preserved"
         if entry["verdict"] != verdict:
-            problems.append(f"{pair}: expected verdict {entry['verdict']!r}, observed {verdict!r}")
+            problems.append(
+                f"{pair}: expected verdict {entry['verdict']!r}, observed {verdict!r}"
+            )
 
-        recorded = {tuple(c["input"]): {"original": c["original"], "edited": c["edited"]}
-                    for c in entry["counterexamples"]}
+        recorded = {
+            tuple(c["input"]): {"original": c["original"], "edited": c["edited"]}
+            for c in entry["counterexamples"]
+        }
         for key in observed.keys() - recorded.keys():
-            problems.append(f"{pair}: input {key} differs but is not listed as a counterexample")
+            problems.append(
+                f"{pair}: input {key} differs but is not listed as a counterexample"
+            )
         for key in recorded.keys() - observed.keys():
-            problems.append(f"{pair}: listed counterexample {key} does not actually differ")
+            problems.append(
+                f"{pair}: listed counterexample {key} does not actually differ"
+            )
         for key in recorded.keys() & observed.keys():
             if recorded[key] != observed[key]:
-                problems.append(f"{pair}: counterexample {key} recorded as {recorded[key]}, "
-                                f"observed {observed[key]}")
+                problems.append(
+                    f"{pair}: counterexample {key} recorded as {recorded[key]}, "
+                    f"observed {observed[key]}"
+                )
 
 
 CASE_RE = re.compile(r'@Case\("\(([^)]*)\)\s*->\s*([^"]+)"\)')
@@ -93,10 +108,14 @@ def check_case_annotations(expected, problems):
             for args, outcome in annotations.get(method, []):
                 row = by_input.get(args)
                 if row is None:
-                    problems.append(f"{method}: @Case input {args} is outside the declared domain")
+                    problems.append(
+                        f"{method}: @Case input {args} is outside the declared domain"
+                    )
                 elif row[f"{prefix}_outcome"] != outcome:
-                    problems.append(f"{method}: @Case says {args} -> {outcome}, "
-                                    f"observed {row[f'{prefix}_outcome']}")
+                    problems.append(
+                        f"{method}: @Case says {args} -> {outcome}, "
+                        f"observed {row[f'{prefix}_outcome']}"
+                    )
 
 
 def main():

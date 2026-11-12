@@ -367,8 +367,7 @@ def test_region_membership_is_the_cartesian_product(intervals, values):
     )
     inputs = {f"arg{index}": value for index, value in enumerate(values)}
     expected = len(intervals) == len(values) and all(
-        jvms.StackInt(value) in interval
-        for value, interval in zip(values, intervals)
+        jvms.StackInt(value) in interval for value, interval in zip(values, intervals)
     )
     assert (inputs in region) is expected
     assert region.is_empty == any(interval.is_empty for interval in intervals)

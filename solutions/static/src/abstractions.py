@@ -235,10 +235,10 @@ class SignSet(Abstraction, Lattice):
                 raise NotImplementedError(f"TODO: {opr}")
 
 
+import builtins
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Self
-
 
 INT_MIN = -(2**31)
 INT_MAX = 2**31 - 1
@@ -254,8 +254,8 @@ class Interval(Abstraction, Lattice):
         upper = INT_MAX if max is None else max
         if not isinstance(lower, int) or not isinstance(upper, int):
             raise TypeError("Interval bounds must be integers or None")
-        lower = INT_MIN if lower < INT_MIN else lower
-        upper = INT_MAX if upper > INT_MAX else upper
+        lower = builtins.max(lower, INT_MIN)
+        upper = builtins.min(upper, INT_MAX)
         if lower > upper:
             lower, upper = 0, -1
         object.__setattr__(self, "min", lower)
@@ -313,11 +313,7 @@ class Interval(Abstraction, Lattice):
             return NotImplemented
         return self != other and (
             self.is_empty
-            or (
-                not other.is_empty
-                and other.min <= self.min
-                and self.max <= other.max
-            )
+            or (not other.is_empty and other.min <= self.min and self.max <= other.max)
         )
 
     def __gt__(self, other: "Interval") -> bool:
