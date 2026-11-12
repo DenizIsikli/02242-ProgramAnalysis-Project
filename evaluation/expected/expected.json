@@ -1,0 +1,44 @@
+{
+  "_comment": "Answer key for the behaviour-preservation corpus. Written by hand from the code and confirmed against evaluation/observations/ by evaluation/check_expected.py. The analyser must never read this file; only the evaluation harness does.",
+  "pairs": [
+    {
+      "pair": "safeDiv",
+      "method": "jpamb.cases.Refactorings.safeDiv:(II)I",
+      "edited": "jpamb.cases.Refactorings.safeDiv_edited:(II)I",
+      "kind": "unchanged",
+      "domain": {"a": [-3, 3], "b": [-3, 3]},
+      "verdict": "preserved",
+      "counterexamples": []
+    },
+    {
+      "pair": "ratio",
+      "method": "jpamb.cases.Refactorings.ratio:(II)I",
+      "edited": "jpamb.cases.Refactorings.ratio_edited:(II)I",
+      "kind": "faulty guard removal",
+      "domain": {"a": [-3, 3], "b": [-3, 3]},
+      "verdict": "changed",
+      "counterexamples": [
+        {
+          "input": [0, 0],
+          "original": {"outcome": "ok", "return": 0},
+          "edited": {"outcome": "divide by zero"}
+        }
+      ]
+    },
+    {
+      "pair": "sign",
+      "method": "jpamb.cases.Refactorings.sign:(I)I",
+      "edited": "jpamb.cases.Refactorings.sign_edited:(I)I",
+      "kind": "return-value-only change",
+      "domain": {"x": [-3, 3]},
+      "verdict": "changed",
+      "counterexamples": [
+        {
+          "input": [0],
+          "original": {"outcome": "ok", "return": 0},
+          "edited": {"outcome": "ok", "return": -1}
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+# Declared input domains for the behaviour-preservation corpus.
+# One line per pair:  <original method name>  <low>  <high>
+# Every int parameter of the pair ranges over [low, high], inclusive.
+# Pairs live in jpamb.cases.Refactorings as <name> and <name>_edited.
+safeDiv  -3  3
+ratio    -3  3
+sign     -3  3
