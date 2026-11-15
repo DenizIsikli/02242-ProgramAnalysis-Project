@@ -11,8 +11,9 @@ correctness issues.
 - `pytest solutions/static/tests/test_abstractions.py`: 79 passed.
 - `python3 evaluation/check_expected.py`: answer key and `@Case` annotations agree
   with the committed observations.
-- `evaluation/observe.sh` was **not** re-run, because Java was not available on
-  the review machine. The CSVs were checked as committed.
+- `bash evaluation/observe.sh` (Temurin JDK 21): the regenerated CSVs are
+  byte-identical to the committed ones (`git status` clean), with 0/49, 1/49 and
+  1/7 differing inputs for `safeDiv`, `ratio` and `sign`.
 - The z3 semantics claims below were checked with `z3-solver` directly.
 
 ## 1. Interval primitives (`solutions/static/src/abstractions.py`)
