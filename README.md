@@ -71,6 +71,13 @@ refinement, loop widening, and paired-method verdicts are not yet wired into the
 interpreter; branch refinement, widening, and verdict computation still need
 implementing.
 
+The correctness side is in [docs/refactoring/](docs/refactoring/):
+the [observation contract](docs/refactoring/observation-contract.md) (what counts
+as behaviour and which methods are supported), the
+[verdict rules](docs/refactoring/verdict-rules.md) with their correctness
+arguments, and a [review](docs/refactoring/review.md) of the interval primitives
+and corpus that lists the unresolved correctness issues.
+
 ## Supported Languages
 
 You can write your analysis in any language you like, however, we have bindings
