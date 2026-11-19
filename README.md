@@ -75,8 +75,10 @@ The correctness side is in [docs/refactoring/](docs/refactoring/):
 the [observation contract](docs/refactoring/observation-contract.md) (what counts
 as behaviour and which methods are supported), the
 [verdict rules](docs/refactoring/verdict-rules.md) with their correctness
-arguments, and a [review](docs/refactoring/review.md) of the interval primitives
-and corpus that lists the unresolved correctness issues.
+arguments, a [review](docs/refactoring/review.md) of the interval primitives
+and corpus that lists the unresolved correctness issues, the
+[soundness notes](docs/refactoring/soundness-notes.md) for the interval
+operations, and the [review of PR 2](docs/refactoring/pr2-review.md).
 
 ## Supported Languages
 

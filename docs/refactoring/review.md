@@ -188,3 +188,19 @@ witness point only, then keep refining the rest of the region.
 | Φ | Encode returns with 32-bit bitvectors, divisor ≠ 0 in path conditions | Rule 3 soundness | whoever builds the SMT step |
 | I8 | K-widening (needed for loops) | loop round, TWI | Krish (impl.), Deniz (proof) |
 | C2, C4, C5, I4 | Corpus coverage and precision notes | paper / later rounds | — |
+
+### Status after PR 2 (2026-11-19)
+
+See [pr2-review.md](pr2-review.md) and [soundness-notes.md](soundness-notes.md).
+
+- **Resolved:** I1, I2, I3 (soundness-notes §1–§6), I5 (`split_region`,
+  `region_size`), I7 (`region_analysis.py`), Φ (`symbolic.py` meets §5), C6
+  (Rule 2 counts the whole region, Rule 3′ counts the witness only).
+- **Partly resolved:**
+  - I8: widening exists but goes to the `int` limits, not to `K`.
+  - C1: `Refactorings.class` and `Refactorings.json` are built, but the class is
+    not yet registered in `Runtime.java`.
+  - C3: `test_real_corpus.py` checks every region claim against the JVM
+    observations.
+- **Still open:** I6 (positional parameter order, see PR 2 review N1), C2, C4,
+  C5, I4.

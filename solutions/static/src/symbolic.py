@@ -25,6 +25,7 @@ from dataclasses import dataclass
 
 import z3
 from abstractions import Region
+from region_analysis import has_exception_handlers
 from region_verdict import ReturnCheck, ReturnChecker
 
 import jpamb
@@ -70,6 +71,8 @@ def symbolic_paths(
     max_paths: int = 256,
 ) -> list[SymPath]:
     """All feasible normally-returning paths of `methodid` over the symbolic `inputs`."""
+    if has_exception_handlers(bc, methodid):
+        raise SymUnsupported("method has exception handlers (try/catch)")
     method = bc.getmethod(methodid)
     params = list(methodid.extension.params)
     if len(params) != len(inputs):

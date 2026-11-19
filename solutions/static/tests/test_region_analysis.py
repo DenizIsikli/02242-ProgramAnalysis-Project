@@ -304,3 +304,48 @@ def test_widening_is_sound_and_terminates():
     assert w == Interval(0, INT_MAX) and new <= w and old <= w
     assert w.widen(Interval(-1, 5)) == Interval(INT_MIN, INT_MAX)
     assert old.widen(old) == old and Interval.bot().widen(new) == new
+
+
+# --- try/catch is outside the contract (observation-contract.md §4) -------------------
+
+
+def test_exception_handlers_make_the_pair_unsupported():
+    """`try { return a / b; } catch (ArithmeticException e) { return -1; }` vs
+    `if (b == 0) return -1; return a / b;` behave identically. Ignoring the handler
+    would report `divide by zero` for b = 0 and a false `changed` (found in review)."""
+    from conftest import FakeBytecode, _ops, binop, ifz, load, push, ret
+    from region_analysis import has_exception_handlers
+    from symbolic import make_return_checker
+
+    import jvm
+    from jvm import CmpOpr as C
+
+    B = jvm.BinaryOpr
+    with_try = _ops(load(0), load(1), binop(B.Div), ret(), push(-1), ret())
+    with_if = _ops(
+        load(1), ifz(C.Ne, 4), push(-1), ret(), load(0), load(1), binop(B.Div), ret()
+    )
+    handler = [
+        {
+            "start": 0,
+            "end": 3,
+            "handler": 4,
+            "catchType": "java/lang/ArithmeticException",
+        }
+    ]
+
+    class Suite:
+        def findmethod(self, mid, eff):
+            name = mid.extension.name
+            return {"code": {"exceptions": handler if name == "div" else []}}
+
+    bc = FakeBytecode(
+        {"div": (with_try, 3, "(II)I"), "div_edited": (with_if, 2, "(II)I")}
+    )
+    bc.suite, bc.eff = Suite(), None
+    a, b = bc.ids["div"], bc.ids["div_edited"]
+
+    assert has_exception_handlers(bc, a) and not has_exception_handlers(bc, b)
+    assert not analyse_outcomes(bc, a, region(DOM, DOM)).supported
+    v = check_pair(bc, a, b, region(DOM, DOM), make_return_checker(bc, a, b))
+    assert v.overall == "unknown" and v.changed_inputs == 0

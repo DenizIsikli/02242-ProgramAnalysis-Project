@@ -109,9 +109,26 @@ def _is_int_type(t) -> bool:
     return isinstance(t, (jvm.Int, jvm.Boolean))
 
 
+def has_exception_handlers(bc: jpamb.Bytecode, methodid: jvm.AbsMethodID) -> bool:
+    """Does the method have a try/catch (a non-empty exception table)?
+
+    try/catch is excluded by observation-contract.md §4: a caught exception is not an
+    outcome, and neither analyser models handlers. Ignoring a handler is unsound: the
+    division in `try { return a / b; } catch (ArithmeticException e) { return -1; }`
+    would be reported as `divide by zero`. `jvm.Method` drops the exception table, so it
+    is read from the decompiled JSON. Test doubles without a `suite` have no handlers.
+    """
+    suite = getattr(bc, "suite", None)
+    if suite is None:
+        return False
+    return bool(suite.findmethod(methodid, eff=bc.eff)["code"].get("exceptions"))
+
+
 def initial_state(
     bc: jpamb.Bytecode, methodid: jvm.AbsMethodID, region: Region
 ) -> AState:
+    if has_exception_handlers(bc, methodid):
+        raise Unsupported("method has exception handlers (try/catch)")
     method = bc.getmethod(methodid)
     params = list(methodid.extension.params)
     bounds = list(region.bounds.values())

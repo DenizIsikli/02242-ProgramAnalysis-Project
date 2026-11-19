@@ -28,6 +28,12 @@ depth-bounded analysis that silently drops long traces breaks (S).
 **(E) Error observations carry no value.** If `out_P(x) ≠ ok`, then
 `obs_P(x) = (out_P(x), ⊥)` (contract §2.1).
 
+Rule 2b also uses the return part of (S), which the analyser provides as
+`returns`:
+
+**(S_ret)** For every `x ∈ R` with `out_P(x) = ok`: `ret_P(x) ∈ r̂_P(R)`, where
+`r̂_P(R)` is the interval of return values the analysis computes for `P`.
+
 From (S) and `R ≠ ∅` it follows that `Â(R) ≠ ∅` and `B̂(R) ≠ ∅`. If the analysis
 ever returns an empty set for a non-empty region, (S) is broken. The checker must
 then answer `unknown`, never `changed` (see Rule 2).
@@ -41,6 +47,8 @@ Apply the rules in this order. The first that matches decides.
 | 0 | `Â(R) = ∅` or `B̂(R) = ∅` | `unknown` (analysis failure) | — |
 | 1 | `Â(R) = B̂(R) = {e}`, `e ≠ ok` | `preserved` | — |
 | 2 | `Â(R) ∩ B̂(R) = ∅` | `changed` | any `x ∈ R` |
+| 2b | `Â(R) = B̂(R) = {ok}`, both `r̂` non-empty and `r̂_A(R) ∩ r̂_B(R) = ∅` | `changed` | any `x ∈ R` |
+| 2b′ | `Â(R) = B̂(R) = {ok}` and `r̂_A(R) = r̂_B(R) = [c, c]` | `preserved` | — |
 | 3 | `Â(R) = B̂(R) = {ok}` and `Φ(R)` is UNSAT | `preserved` | — |
 | 3′ | `Â(R) = B̂(R) = {ok}` and `Φ(R)` has model `w` that replays | `changed` | `w` |
 | 4 | otherwise (including solver `unknown`/timeout, or a model that does not replay) | `unknown`, refine `R` | — |
@@ -86,6 +94,35 @@ Observations with different outcome classes are different. ∎
 - A convenient witness is the lower corner `(min R1, …, min Rn)`. The harness
   replays it on the JVM. A failed replay means (S) is broken, not that the rule
   is wrong.
+
+## 4b. Rule 2b: return intervals decide without a solver
+
+Rule 2b was added by Krish in the implementation
+([region_verdict.py](../../solutions/static/src/region_verdict.py)). It is sound
+under (S) and (S_ret).
+
+**Claim (2b).** If both outcome sets are `{ok}`, both return intervals are
+non-empty, and `r̂_A(R) ∩ r̂_B(R) = ∅`, then `A` and `B` disagree on every `x ∈ R`.
+
+**Argument.** Take any `x ∈ R`. By (S) both versions return normally on `x`. By
+(S_ret), `ret_A(x) ∈ r̂_A(R)` and `ret_B(x) ∈ r̂_B(R)`. The intervals are
+disjoint, so `ret_A(x) ≠ ret_B(x)`. ∎
+
+**Claim (2b′).** If both outcome sets are `{ok}` and `r̂_A(R) = r̂_B(R) = [c, c]`,
+then `A` and `B` agree on every `x ∈ R`.
+
+**Argument.** Take any `x ∈ R`. By (S) and (S_ret), both return normally with a
+value in `[c, c]`, so `obs_A(x) = (ok, c) = obs_B(x)`. ∎
+
+**Remarks.**
+
+- An empty `r̂` together with outcome `ok` breaks (S_ret), the same way an empty
+  outcome set breaks (S). Without the non-emptiness condition the disjointness
+  test would fire vacuously, so the code checks it (the Rule 0 argument again).
+- Rule 2b is weaker than Rule 3, not a replacement. Overlapping, non-constant
+  return intervals (for example `safeDiv` on `a, b ∈ [1, 3]`) still need the
+  solver. Without it, refinement can only decide such a region by splitting it
+  down to points, where every return interval is a constant.
 
 ## 5. Rule 3: matching `{ok}` needs a return comparison
 
@@ -152,6 +189,19 @@ implementation:
    replay. That catches encoding bugs in the `changed` direction. In the
    `preserved` direction an encoding bug cannot be caught this way, which is
    why conditions 1–3 matter.
+
+The implementation is
+[symbolic.py](../../solutions/static/src/symbolic.py). It meets all five
+conditions (see [pr2-review.md](pr2-review.md)). Two details:
+
+- Condition 3 is enforced twice. Backward jumps raise "unsupported", and before
+  trusting UNSAT the checker also asks z3 whether the collected `ok` paths cover
+  all of `R`. If they do not, the answer is `unknown`. So Rule 3 stays sound
+  even if it is called on a region that is not really `{ok}`.
+- The replay in condition 5 uses an independent Python interpreter with Java
+  `int` semantics (`concrete_run`), not the JVM. The evaluation harness then
+  checks every witness against the real-JVM observations (contract §5.1,
+  [test_real_corpus.py](../../solutions/static/tests/test_real_corpus.py)).
 
 ## 6. Why the singleton condition is needed
 

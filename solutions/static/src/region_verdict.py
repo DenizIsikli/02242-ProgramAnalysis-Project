@@ -119,7 +119,9 @@ def region_verdict(
 
     if a.outcomes == b.outcomes == {"ok"}:
         ra, rb = a.returns, b.returns
-        if ra is not None and rb is not None:
+        # An empty return interval with outcome `ok` breaks (S), like Rule 0; without
+        # this guard the disjointness test below would fire vacuously.
+        if ra is not None and rb is not None and not (ra.is_empty or rb.is_empty):
             # Rule 2b: return intervals disjoint -> every input returns different values.
             if (ra & rb).is_empty:
                 return RegionVerdict(
