@@ -324,19 +324,160 @@ class Interval(Abstraction, Lattice):
     def arithmetic(
         self, other: "Interval", opr: jvm.BinaryOpr
     ) -> tuple["Interval", set[str]]:
-        if opr not in (jvm.BinaryOpr.Add, jvm.BinaryOpr.Sub):
-            raise NotImplementedError(f"Unsupported interval arithmetic: {opr}")
+        """Abstract Java `int` arithmetic: returns (result interval, error outcomes).
+
+        Soundness contract (S): for every x in self and y in other for which the
+        operation does not throw, the wrapped Java result is in the interval; if
+        it can throw, "divide by zero" is in the error set. Anything that might
+        overflow becomes top, so wrapped results are never lost.
+        """
         if self.is_empty or other.is_empty:
             return (Interval.bot(), set())
-        if opr == jvm.BinaryOpr.Add:
-            lower = self.min + other.min
-            upper = self.max + other.max
-        else:
-            lower = self.min - other.max
-            upper = self.max - other.min
-        if lower < INT_MIN or upper > INT_MAX:
-            return (Interval.top(), set())
-        return (Interval(lower, upper), set())
+        match opr:
+            case jvm.BinaryOpr.Add:
+                return (
+                    _checked(self.min + other.min, self.max + other.max),
+                    set(),
+                )
+            case jvm.BinaryOpr.Sub:
+                return (
+                    _checked(self.min - other.max, self.max - other.min),
+                    set(),
+                )
+            case jvm.BinaryOpr.Mul:
+                corners = [
+                    self.min * other.min,
+                    self.min * other.max,
+                    self.max * other.min,
+                    self.max * other.max,
+                ]
+                return (_checked(min(corners), max(corners)), set())
+            case jvm.BinaryOpr.Div | jvm.BinaryOpr.Rem:
+                errors = {"divide by zero"} if other.min <= 0 <= other.max else set()
+                result = Interval.bot()
+                for part in other._nonzero_parts():
+                    result = result | (
+                        self._div_part(part)
+                        if opr == jvm.BinaryOpr.Div
+                        else self._rem_part(part)
+                    )
+                return (result, errors)
+            case _:
+                raise NotImplementedError(f"Unsupported interval arithmetic: {opr}")
+
+    def _nonzero_parts(self) -> list["Interval"]:
+        """The divisor with 0 removed, as up to two intervals (negative, positive)."""
+        parts = []
+        if self.min <= -1:
+            parts.append(Interval(self.min, builtins.min(self.max, -1)))
+        if self.max >= 1:
+            parts.append(Interval(builtins.max(self.min, 1), self.max))
+        return [p for p in parts if not p.is_empty]
+
+    def _div_part(self, divisor: "Interval") -> "Interval":
+        # divisor has a fixed sign, so truncated division is monotone in both
+        # arguments and its extremes are at the corners.
+        if self.min == INT_MIN and divisor.min <= -1 <= divisor.max:
+            return Interval.top()  # MIN / -1 wraps to MIN in Java
+        corners = [
+            _trunc_div(x, y)
+            for x in (self.min, self.max)
+            for y in (divisor.min, divisor.max)
+        ]
+        return Interval(min(corners), max(corners))
+
+    def _rem_part(self, divisor: "Interval") -> "Interval":
+        # Java: the remainder has the sign of the dividend and |r| < |divisor|.
+        m = builtins.max(abs(divisor.min), abs(divisor.max)) - 1
+        lower = 0 if self.min >= 0 else builtins.max(self.min, -m)
+        upper = 0 if self.max <= 0 else builtins.min(self.max, m)
+        return Interval(lower, upper)
+
+    def widen(self, other: "Interval") -> "Interval":
+        """Standard interval widening: any bound that grows jumps to the int limit.
+
+        `self` is the old value, `other` the new one. Result contains both, and a
+        chain of widenings changes each bound at most once, so it terminates.
+        """
+        if self.is_empty:
+            return other
+        if other.is_empty:
+            return self
+        lower = self.min if other.min >= self.min else INT_MIN
+        upper = self.max if other.max <= self.max else INT_MAX
+        return Interval(lower, upper)
+
+    def neg(self) -> "Interval":
+        if self.is_empty:
+            return self
+        return _checked(-self.max, -self.min)
+
+    def refine(
+        self, other: "Interval", cond: jvm.CmpOpr, holds: bool = True
+    ) -> tuple["Interval", "Interval"]:
+        """Narrow (self, other) to the pairs (x, y) with `x cond y` == holds.
+
+        Sound: every x in self, y in other with the condition true stay inside
+        the returned intervals. May return empty intervals (branch infeasible).
+        """
+        if not holds:
+            cond = _NEGATED[cond]
+        a, b = self, other
+        if a.is_empty or b.is_empty:
+            return (Interval.bot(), Interval.bot())
+        match cond:
+            case jvm.CmpOpr.Eq:
+                both = a & b
+                return (both, both)
+            case jvm.CmpOpr.Ne:
+                if a.min == a.max == b.min == b.max:
+                    return (Interval.bot(), Interval.bot())
+                return (a._without_endpoint(b), b._without_endpoint(a))
+            case jvm.CmpOpr.Lt:
+                return (a & Interval(None, b.max - 1), b & Interval(a.min + 1, None))
+            case jvm.CmpOpr.Le:
+                return (a & Interval(None, b.max), b & Interval(a.min, None))
+            case jvm.CmpOpr.Gt:
+                return (a & Interval(b.min + 1, None), b & Interval(None, a.max - 1))
+            case jvm.CmpOpr.Ge:
+                return (a & Interval(b.min, None), b & Interval(None, a.max))
+        raise NotImplementedError(f"Unsupported comparison: {cond}")
+
+    def _without_endpoint(self, other: "Interval") -> "Interval":
+        """self minus the single value `other`, if that value is an endpoint."""
+        if other.min != other.max:
+            return self
+        v = other.min
+        if self.min == self.max == v:
+            return Interval.bot()
+        if self.min == v:
+            return Interval(self.min + 1, self.max)
+        if self.max == v:
+            return Interval(self.min, self.max - 1)
+        return self
+
+
+def _trunc_div(x: int, y: int) -> int:
+    """Java integer division (truncates toward zero), y != 0, no wrapping."""
+    q = abs(x) // abs(y)
+    return -q if (x < 0) != (y < 0) else q
+
+
+def _checked(lower: int, upper: int) -> "Interval":
+    """Interval of mathematical bounds, or top if a Java int could wrap."""
+    if lower < INT_MIN or upper > INT_MAX:
+        return Interval.top()
+    return Interval(lower, upper)
+
+
+_NEGATED = {
+    jvm.CmpOpr.Eq: jvm.CmpOpr.Ne,
+    jvm.CmpOpr.Ne: jvm.CmpOpr.Eq,
+    jvm.CmpOpr.Lt: jvm.CmpOpr.Ge,
+    jvm.CmpOpr.Ge: jvm.CmpOpr.Lt,
+    jvm.CmpOpr.Le: jvm.CmpOpr.Gt,
+    jvm.CmpOpr.Gt: jvm.CmpOpr.Le,
+}
 
 
 @dataclass(frozen=True)
