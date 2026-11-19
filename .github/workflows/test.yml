@@ -39,6 +39,6 @@ jobs:
       - name: Run Python tests
         run: |
           uv run pytest
-      - name: Run interval and region foundation tests
+      - name: Run interval, region, outcome-analysis and symbolic tests
         run: |
-          uv run pytest -o "pythonpath=solutions/static/src src" solutions/static/tests/test_abstractions.py
+          uv run --with z3-solver pytest -o "pythonpath=solutions/static/src src" solutions/static/tests
