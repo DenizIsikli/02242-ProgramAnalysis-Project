@@ -25,6 +25,7 @@ timeout or a model that does not replay MUST be reported as `unknown`.
 from __future__ import annotations
 
 import math
+import time
 from collections import deque
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
@@ -62,6 +63,16 @@ class RegionVerdict:
 
 
 @dataclass(frozen=True)
+class PairStats:
+    """Cost of deciding one pair (reported in the evaluation)."""
+
+    regions_analysed: int = 0  # regions given to the interval analysis
+    checker_calls: int = 0  # calls of the return checker (SMT queries)
+    seconds: float = 0.0
+    executions: int = 0  # concrete executions (testing baselines only)
+
+
+@dataclass(frozen=True)
 class PairVerdict:
     overall: Status  # "preserved" here means: on the whole declared domain
     regions: tuple[RegionVerdict, ...]
@@ -72,6 +83,7 @@ class PairVerdict:
     )
     unknown_inputs: int
     witness: tuple[int, ...] | None
+    stats: PairStats = PairStats()
 
     @property
     def certified_coverage(self) -> float:
@@ -222,6 +234,16 @@ def check_pair(
     budget runs out stay `unknown`. Children are disjoint and cover their parent, so the
     input counts never double-count.
     """
+    started = time.perf_counter()
+    calls = 0
+    if return_check is not None:
+        inner = return_check
+
+        def return_check(region: Region) -> ReturnCheck:  # counts SMT queries
+            nonlocal calls
+            calls += 1
+            return inner(region)
+
     consts = constants_of(bc, original) | constants_of(bc, edited)
     queue: deque[Region] = deque([domain])
     decided: list[RegionVerdict] = []
@@ -250,7 +272,9 @@ def check_pair(
         else:
             decided.append(v)
 
-    return _combine(domain, decided, witnesses)
+    verdict = _combine(domain, decided, witnesses)
+    stats = PairStats(analysed, calls, time.perf_counter() - started)
+    return PairVerdict(**{**verdict.__dict__, "stats": stats})
 
 
 def _combine(

@@ -47,7 +47,8 @@ class SymUnsupported(Exception):
 @dataclass(frozen=True)
 class SymPath:
     cond: tuple  # z3 Bool expressions
-    ret: z3.BitVecRef
+    ret: z3.BitVecRef | None  # None for error paths
+    outcome: str = "ok"  # "ok", "divide by zero" or "assertion error"
 
 
 def _is_int(t) -> bool:
@@ -69,8 +70,14 @@ def symbolic_paths(
     methodid: jvm.AbsMethodID,
     inputs: list[z3.BitVecRef],
     max_paths: int = 256,
+    include_errors: bool = False,
 ) -> list[SymPath]:
-    """All feasible normally-returning paths of `methodid` over the symbolic `inputs`."""
+    """All feasible paths of `methodid` over the symbolic `inputs`.
+
+    By default only normally-returning ("ok") paths are collected, which is what rules 3/3'
+    need. With `include_errors`, the paths ending in `divide by zero` / `assertion error`
+    are collected too, so the whole observation (outcome and value) can be compared.
+    """
     if has_exception_handlers(bc, methodid):
         raise SymUnsupported("method has exception handlers (try/catch)")
     method = bc.getmethod(methodid)
@@ -84,6 +91,12 @@ def symbolic_paths(
         locals_[i] = x
 
     paths: list[SymPath] = []
+
+    def record(path: SymPath) -> None:
+        paths.append(path)
+        if len(paths) > max_paths:
+            raise SymUnsupported("path budget exceeded")
+
     # Explicit DFS stack of (offset, locals, stack, conds).
     work = [(0, tuple(locals_), (), ())]
     steps = 0
@@ -133,7 +146,11 @@ def symbolic_paths(
                         case jvm.BinaryOpr.Mul:
                             r = x * y
                         case jvm.BinaryOpr.Div | jvm.BinaryOpr.Rem:
-                            # Only the non-throwing continuation is an "ok" path.
+                            if include_errors:
+                                zero = conds + (y == 0,)
+                                if feasible(zero):
+                                    record(SymPath(zero, None, "divide by zero"))
+                            # The non-throwing continuation carries "divisor != 0".
                             conds = conds + (y != 0,)
                             if not feasible(conds):
                                 break
@@ -168,11 +185,11 @@ def symbolic_paths(
                 ):
                     stack = stack + (z3.BitVecVal(0, BITS),)
                 case jvm.Return(type=t) if _is_int(t):
-                    paths.append(SymPath(conds, stack[-1]))
-                    if len(paths) > max_paths:
-                        raise SymUnsupported("path budget exceeded")
+                    record(SymPath(conds, stack[-1]))
                     break
                 case jvm.New(classname=jvm.ClassName("java.lang.AssertionError")):
+                    if include_errors:
+                        record(SymPath(conds, None, "assertion error"))
                     break  # not a normal return: not an "ok" path
                 case other:
                     raise SymUnsupported(f"opcode {other}")
@@ -290,13 +307,20 @@ def make_return_checker(
     edited: jvm.AbsMethodID,
     timeout_ms: int = 5000,
     max_paths: int = 256,
+    observations: bool = False,
 ) -> ReturnChecker:
-    """Build the `(Region) -> ReturnCheck` callable used by `check_pair`."""
+    """Build the `(Region) -> ReturnCheck` callable used by `check_pair`.
+
+    Default: compare return values on the "ok" paths (rules 3/3', used after the interval
+    gate proved both versions return normally). With `observations=True` the error paths are
+    encoded too, so the checker compares the full observation (outcome class and value) and
+    can be used alone: this is the "Z3 only, gate disabled" baseline of the evaluation.
+    """
     arity = len(original.extension.params)
     xs = [z3.BitVec(f"x{i}", BITS) for i in range(arity)]
     try:
-        paths_a = symbolic_paths(bc, original, xs, max_paths)
-        paths_b = symbolic_paths(bc, edited, xs, max_paths)
+        paths_a = symbolic_paths(bc, original, xs, max_paths, observations)
+        paths_b = symbolic_paths(bc, edited, xs, max_paths, observations)
         failure = None
     except SymUnsupported as exc:
         paths_a = paths_b = []
@@ -320,13 +344,15 @@ def make_return_checker(
             cover.add(*in_region, z3.Not(z3.Or(*[z3.And(*p.cond) for p in paths])))
             if cover.check() != z3.unsat:
                 return ReturnCheck("unknown")
-        mismatch = z3.Or(
-            *[
-                z3.And(*pa.cond, *pb.cond, pa.ret != pb.ret)
-                for pa in paths_a
-                for pb in paths_b
-            ]
-        )
+        pairs = []
+        for pa in paths_a:
+            for pb in paths_b:
+                if pa.outcome != pb.outcome:
+                    pairs.append(z3.And(*pa.cond, *pb.cond))  # outcome classes differ
+                elif pa.outcome == "ok":
+                    pairs.append(z3.And(*pa.cond, *pb.cond, pa.ret != pb.ret))
+                # same error class on both sides: observations agree, nothing to add
+        mismatch = z3.Or(*pairs) if pairs else z3.BoolVal(False)
         solver = z3.Solver()
         solver.set("timeout", timeout_ms)
         solver.add(*in_region, mismatch)
