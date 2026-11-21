@@ -2,7 +2,8 @@
 
     PYTHONPATH=solutions/static/src:src python evaluation/ablation.py [--budget 1000] [--csv out.csv]
 
-For every pair (the corpus in evaluation/expected/expected.json plus a few `Simple` pairs) it
+For every pair (the corpus in evaluation/expected/expected.json, a few `Simple` pairs and the loop /
+many-path pairs of cases/jpamb/cases/EvalPairs.java) it
 runs four methods on a small domain [-3,3]^k (ground truth by exhaustive execution) and a
 large domain [-1000,1000]^k (no exhaustive truth; verdicts are sanity-checked by sampling):
 
@@ -42,6 +43,16 @@ SIMPLE = [
 ]
 
 
+# Evaluation-only pairs (cases/jpamb/cases/EvalPairs.java): loops and many paths.
+EVAL = [
+    ("loopDiv", "loopDiv_guarded", "(II)I"),
+    ("loopDiv", "loopDiv_rewritten", "(II)I"),
+    ("loopThenZero", "loopThenZero_edited", "(I)I"),
+    ("ladder", "ladder_reordered", "(I)I"),
+    ("ladder", "ladder_changed", "(I)I"),
+]
+
+
 def pairs(root: Path):
     key = json.loads((root / "evaluation/expected/expected.json").read_text())
     for p in key["pairs"]:
@@ -55,6 +66,12 @@ def pairs(root: Path):
             f"{a}~{b}",
             jvm.AbsMethodID.decode(f"jpamb.cases.Simple.{a}:{desc}"),
             jvm.AbsMethodID.decode(f"jpamb.cases.Simple.{b}:{desc}"),
+        )
+    for a, b, desc in EVAL:
+        yield (
+            f"{a}~{b}",
+            jvm.AbsMethodID.decode(f"jpamb.cases.EvalPairs.{a}:{desc}"),
+            jvm.AbsMethodID.decode(f"jpamb.cases.EvalPairs.{b}:{desc}"),
         )
 
 
@@ -72,14 +89,16 @@ def sample_differs(bc, a, b, dom: Region, n: int = 2000) -> tuple[int, ...] | No
     return None
 
 
-def run(bc, name, a, b, lo, hi, budget, truth_exact):
+def run(bc, name, a, b, lo, hi, budget, truth_exact, timeout_ms=5000):
     dom = domain(a, lo, hi)
     if truth_exact:
         differs, _count, _ = exhaustive(bc, a, b, dom)
     results = {}
     results["gate"] = check_pair(bc, a, b, dom)
-    results["hybrid"] = check_pair(bc, a, b, dom, make_return_checker(bc, a, b))
-    results["z3only"] = z3_only(bc, a, b, dom)
+    results["hybrid"] = check_pair(
+        bc, a, b, dom, make_return_checker(bc, a, b, timeout_ms)
+    )
+    results["z3only"] = z3_only(bc, a, b, dom, timeout_ms)
     results["random"] = random_testing(bc, a, b, dom, budget)
     rows = []
     for mode, v in results.items():
@@ -114,6 +133,9 @@ def main(argv=None) -> int:
     ap.add_argument(
         "--budget", type=int, default=1000, help="random-testing executions"
     )
+    ap.add_argument(
+        "--timeout-ms", type=int, default=5000, help="per-query solver timeout"
+    )
     ap.add_argument("--csv", help="also write all rows to this CSV file")
     ap.add_argument("--root", default=str(ROOT))
     args = ap.parse_args(argv)
@@ -124,8 +146,8 @@ def main(argv=None) -> int:
 
     rows = []
     for name, a, b in pairs(root):
-        rows += run(bc, name, a, b, -3, 3, args.budget, True)
-        rows += run(bc, name, a, b, -1000, 1000, args.budget, False)
+        rows += run(bc, name, a, b, -3, 3, args.budget, True, args.timeout_ms)
+        rows += run(bc, name, a, b, -1000, 1000, args.budget, False, args.timeout_ms)
 
     for size, label in (
         ("small", "small domain [-3,3]^k (ground truth by exhaustive execution)"),

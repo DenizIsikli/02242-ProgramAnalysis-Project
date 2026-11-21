@@ -3,7 +3,7 @@
 Run: `PYTHONPATH=solutions/static/src:src python evaluation/ablation.py [--budget N] [--csv out.csv]`
 (needs `z3-solver`; uses the committed `target/decompiled` files).
 
-Four methods on every pair (the 3 corpus pairs plus 5 `Simple` pairs), on a small domain
+Four methods on every pair (the 3 corpus pairs, 5 `Simple` pairs and 5 loop / many-path pairs from `cases/jpamb/cases/EvalPairs.java`, which is evaluation-only and not part of the shared corpus; `--timeout-ms` sets the solver timeout), on a small domain
 `[-3,3]^k` (ground truth: every input executed) and a large one `[-1000,1000]^k`:
 
 | mode | what it is |
@@ -18,7 +18,7 @@ exists, `changed` without a real difference); on the large domain a `preserved` 
 checked by sampling 2000 inputs. `unknown` is never wrong. `check_pair` and the baselines report
 `PairStats` (regions analysed, SMT queries, executions, seconds).
 
-## First results (budget 1000, 16 rows)
+## Results on the first 16 rows (budget 1000), loop-free pairs only
 
 | mode | decided | wrong | mean certified coverage |
 |---|---|---|---|
@@ -42,3 +42,29 @@ checked by sampling 2000 inputs. `unknown` is never wrong. `check_pair` and the 
 - Region splitting is weak on `justAdd~justMulitply` over `[-1000,1000]^2` (91% after the
   201-region budget): the differing inputs are almost everywhere, but only constant-based splits
   are used.
+
+## Loop and many-path pairs (26 rows in total, 0 wrong)
+
+| mode | decided | wrong | mean certified coverage |
+|---|---|---|---|
+| gate | 22/26 | 0 | 85% |
+| hybrid | 24/26 | 0 | 94% |
+| z3only | 20/26 | 0 | 36% |
+| random | 12/26 | 0 | 2% |
+
+- **Loops are where the gate earns its place.** The symbolic executor rejects loops, so `z3only`
+  returns `unknown` on all three loop pairs. Intervals still decide `loopThenZero` (both always
+  divide by zero, preserved, 100%) and find the `d == 0` difference of `loopDiv~loopDiv_guarded`
+  with a witness, certifying 76% (small domain) / 50% (large) of the inputs.
+- **Honest limits.** `loopDiv~loopDiv_rewritten` (identical behaviour) stays `unknown` for every
+  method except that gate/hybrid certify the `d == 0` slice: both versions return a loop-dependent
+  value and nothing proves them equal. Loops are outcome-only in the abstract analysis and
+  loop-free in Z3.
+- **Path explosion did not show up.** `ladder` has 12 sequential ifs, but the symbolic executor
+  prunes infeasible paths, so Z3 decides all `ladder` pairs in one query. The gate decides them too
+  (preserved without any SMT call, via rule 2b on regions split at the constants) and is
+  3-5x faster than Z3 on these pairs; hybrid is slowest on `ladder~ladder_changed` over the large
+  domain (13 SMT calls, 1.5 s) because it keeps refining after the witness. Do not claim a path
+  explosion win from this pair.
+- Random testing needs ~1000 runs to say nothing on the `equal` pairs and found the `d == 0`
+  difference only after 306 runs on the large domain.
