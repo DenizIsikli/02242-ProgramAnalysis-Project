@@ -296,7 +296,8 @@ def test_interval_arithmetic_includes_wrapped_java_results(first, second, operat
 
 def test_interval_unsupported_arithmetic_is_explicit():
     with pytest.raises(NotImplementedError):
-        ab.Interval(1, 2).arithmetic(ab.Interval(1, 2), jvm.BinaryOpr.Div)
+        # Every JVM int operator is supported now; anything else must be explicit.
+        ab.Interval(1, 2).arithmetic(ab.Interval(1, 2), "shl")
 
 
 @pytest.mark.parametrize(
