@@ -1,0 +1,8 @@
+x,orig_outcome,orig_return,edited_outcome,edited_return,same
+-3,ok,-2,ok,-2,yes
+-2,ok,-1,ok,-1,yes
+-1,ok,0,ok,0,yes
+0,ok,1,ok,1,yes
+1,ok,2,ok,2,yes
+2,ok,3,ok,3,yes
+3,ok,4,ok,4,yes

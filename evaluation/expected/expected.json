@@ -6,7 +6,17 @@
       "method": "jpamb.cases.Refactorings.safeDiv:(II)I",
       "edited": "jpamb.cases.Refactorings.safeDiv_edited:(II)I",
       "kind": "unchanged",
-      "domain": {"a": [-3, 3], "b": [-3, 3]},
+      "category": "preserving",
+      "domain": {
+        "a": [
+          -3,
+          3
+        ],
+        "b": [
+          -3,
+          3
+        ]
+      },
       "verdict": "preserved",
       "counterexamples": []
     },
@@ -15,13 +25,31 @@
       "method": "jpamb.cases.Refactorings.ratio:(II)I",
       "edited": "jpamb.cases.Refactorings.ratio_edited:(II)I",
       "kind": "faulty guard removal",
-      "domain": {"a": [-3, 3], "b": [-3, 3]},
+      "category": "exception",
+      "domain": {
+        "a": [
+          -3,
+          3
+        ],
+        "b": [
+          -3,
+          3
+        ]
+      },
       "verdict": "changed",
       "counterexamples": [
         {
-          "input": [0, 0],
-          "original": {"outcome": "ok", "return": 0},
-          "edited": {"outcome": "divide by zero"}
+          "input": [
+            0,
+            0
+          ],
+          "original": {
+            "outcome": "ok",
+            "return": 0
+          },
+          "edited": {
+            "outcome": "divide by zero"
+          }
         }
       ]
     },
@@ -30,15 +58,209 @@
       "method": "jpamb.cases.Refactorings.sign:(I)I",
       "edited": "jpamb.cases.Refactorings.sign_edited:(I)I",
       "kind": "return-value-only change",
-      "domain": {"x": [-3, 3]},
+      "category": "return-only",
+      "domain": {
+        "x": [
+          -3,
+          3
+        ]
+      },
       "verdict": "changed",
       "counterexamples": [
         {
-          "input": [0],
-          "original": {"outcome": "ok", "return": 0},
-          "edited": {"outcome": "ok", "return": -1}
+          "input": [
+            0
+          ],
+          "original": {
+            "outcome": "ok",
+            "return": 0
+          },
+          "edited": {
+            "outcome": "ok",
+            "return": -1
+          }
         }
       ]
+    },
+    {
+      "pair": "absVal",
+      "method": "jpamb.cases.Refactorings.absVal:(I)I",
+      "edited": "jpamb.cases.Refactorings.absVal_edited:(I)I",
+      "kind": "removed negation branch",
+      "category": "return-only",
+      "domain": {
+        "x": [
+          -3,
+          3
+        ]
+      },
+      "verdict": "changed",
+      "counterexamples": [
+        {
+          "input": [
+            -3
+          ],
+          "original": {
+            "outcome": "ok",
+            "return": 3
+          },
+          "edited": {
+            "outcome": "ok",
+            "return": -3
+          }
+        },
+        {
+          "input": [
+            -2
+          ],
+          "original": {
+            "outcome": "ok",
+            "return": 2
+          },
+          "edited": {
+            "outcome": "ok",
+            "return": -2
+          }
+        },
+        {
+          "input": [
+            -1
+          ],
+          "original": {
+            "outcome": "ok",
+            "return": 1
+          },
+          "edited": {
+            "outcome": "ok",
+            "return": -1
+          }
+        }
+      ]
+    },
+    {
+      "pair": "belowTwo",
+      "method": "jpamb.cases.Refactorings.belowTwo:(I)I",
+      "edited": "jpamb.cases.Refactorings.belowTwo_edited:(I)I",
+      "kind": "inclusive threshold off-by-one",
+      "category": "return-only",
+      "domain": {
+        "x": [
+          -3,
+          3
+        ]
+      },
+      "verdict": "changed",
+      "counterexamples": [
+        {
+          "input": [
+            2
+          ],
+          "original": {
+            "outcome": "ok",
+            "return": 0
+          },
+          "edited": {
+            "outcome": "ok",
+            "return": 1
+          }
+        }
+      ]
+    },
+    {
+      "pair": "reciprocal",
+      "method": "jpamb.cases.Refactorings.reciprocal:(I)I",
+      "edited": "jpamb.cases.Refactorings.reciprocal_edited:(I)I",
+      "kind": "removed zero-divisor guard",
+      "category": "exception",
+      "domain": {
+        "x": [
+          -3,
+          3
+        ]
+      },
+      "verdict": "changed",
+      "counterexamples": [
+        {
+          "input": [
+            0
+          ],
+          "original": {
+            "outcome": "ok",
+            "return": 0
+          },
+          "edited": {
+            "outcome": "divide by zero"
+          }
+        }
+      ]
+    },
+    {
+      "pair": "addTemps",
+      "method": "jpamb.cases.Refactorings.addTemps:(II)I",
+      "edited": "jpamb.cases.Refactorings.addTemps_edited:(II)I",
+      "kind": "temporary-variable elimination",
+      "category": "preserving",
+      "domain": {
+        "a": [
+          -3,
+          3
+        ],
+        "b": [
+          -3,
+          3
+        ]
+      },
+      "verdict": "preserved",
+      "counterexamples": []
+    },
+    {
+      "pair": "deadCode",
+      "method": "jpamb.cases.Refactorings.deadCode:(I)I",
+      "edited": "jpamb.cases.Refactorings.deadCode_edited:(I)I",
+      "kind": "dead-code removal",
+      "category": "preserving",
+      "domain": {
+        "x": [
+          -3,
+          3
+        ]
+      },
+      "verdict": "preserved",
+      "counterexamples": []
+    },
+    {
+      "pair": "absBranch",
+      "method": "jpamb.cases.Refactorings.absBranch:(I)I",
+      "edited": "jpamb.cases.Refactorings.absBranch_edited:(I)I",
+      "kind": "branch inversion",
+      "category": "preserving",
+      "domain": {
+        "x": [
+          -3,
+          3
+        ]
+      },
+      "verdict": "preserved",
+      "counterexamples": []
+    },
+    {
+      "pair": "maxBranch",
+      "method": "jpamb.cases.Refactorings.maxBranch:(II)I",
+      "edited": "jpamb.cases.Refactorings.maxBranch_edited:(II)I",
+      "kind": "comparison and branch reversal",
+      "category": "preserving",
+      "domain": {
+        "a": [
+          -3,
+          3
+        ],
+        "b": [
+          -3,
+          3
+        ]
+      },
+      "verdict": "preserved",
+      "counterexamples": []
     }
   ]
 }

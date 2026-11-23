@@ -1,9 +1,12 @@
 """Checks the corpus answer key against the reference observations.
 
-Two checks, both independent of our analyser:
-  1. evaluation/expected/expected.json (hand-written verdicts and counterexamples)
+Checks, all independent of our analyser:
+  1. pairs.txt and expected.json agree on the corpus and domains, with the
+     required pair count and fault categories.
+  2. evaluation/expected/expected.json (hand-written verdicts and counterexamples)
      agrees with evaluation/observations/*.csv (real JVM runs).
-  2. Every @Case annotation in Refactorings.java that falls inside the declared
+     Observations cover each domain exactly once.
+  3. Every @Case annotation in Refactorings.java that falls inside the declared
      domain agrees with the observed outcome.
 
 Run after `bash evaluation/observe.sh`:   python3 evaluation/check_expected.py
@@ -11,20 +14,20 @@ Exits with status 1 and prints the problems if anything disagrees.
 """
 
 import csv
+import itertools
 import json
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 EXPECTED = ROOT / "evaluation" / "expected" / "expected.json"
-OBSERVATIONS = ROOT / "evaluation" / "observations"
-CASES = ROOT / "cases" / "jpamb" / "cases" / "Refactorings.java"
 
 
-def load_observations(pair):
+def load_observations(pair, *, root=ROOT):
     """Returns (parameter names, rows) where each row maps column -> value."""
-    with open(OBSERVATIONS / f"{pair}.csv", newline="") as f:
+    with open(root / "evaluation/observations" / f"{pair}.csv", newline="") as f:
         reader = csv.DictReader(f)
         rows = list(reader)
         params = reader.fieldnames[: reader.fieldnames.index("orig_outcome")]
@@ -39,24 +42,87 @@ def side(row, prefix):
     return result
 
 
-def check_verdicts(expected, problems):
+def check_manifest(expected, problems, *, root=ROOT):
+    """Keep the declared corpus, answer key and category requirements in sync."""
+    manifest = {}
+    for line in (root / "evaluation/pairs.txt").read_text().splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        name, low, high = line.split()
+        if name in manifest:
+            problems.append(f"{name}: duplicate pair in pairs.txt")
+        manifest[name] = (int(low), int(high))
+    names = [entry["pair"] for entry in expected["pairs"]]
+    if len(set(names)) != len(names):
+        problems.append("duplicate pair in expected.json")
+    if set(manifest) != set(names):
+        problems.append("pairs.txt and expected.json declare different pairs")
+    categories = Counter(entry["category"] for entry in expected["pairs"])
+    if len(names) < 10 or categories["return-only"] < 3 or categories["exception"] < 2:
+        problems.append(
+            "corpus requires >=10 pairs, >=3 return-only and >=2 exception faults"
+        )
+    if set(categories) - {"preserving", "return-only", "exception"}:
+        problems.append("unrecognised corpus category")
+    for entry in expected["pairs"]:
+        name = entry["pair"]
+        if name not in manifest:
+            continue
+        low, high = manifest[name]
+        if low > high or any(
+            bounds != [low, high] for bounds in entry["domain"].values()
+        ):
+            problems.append(f"{name}: domain disagrees with pairs.txt")
+        descriptor = "(" + "I" * len(entry["domain"]) + ")I"
+        for field, suffix in (("method", ""), ("edited", "_edited")):
+            if entry[field] != f"jpamb.cases.Refactorings.{name}{suffix}:{descriptor}":
+                problems.append(f"{name}: incorrect {field} method ID")
+        verdict = "preserved" if entry["category"] == "preserving" else "changed"
+        if entry["verdict"] != verdict:
+            problems.append(f"{name}: category disagrees with verdict")
+
+
+def check_verdicts(expected, problems, *, root=ROOT):
     for entry in expected["pairs"]:
         pair = entry["pair"]
-        params, rows = load_observations(pair)
+        params, rows = load_observations(pair, root=root)
 
         if list(entry["domain"]) != params:
             problems.append(
                 f"{pair}: domain names {list(entry['domain'])} != CSV columns {params}"
             )
 
+        wanted = set(
+            itertools.product(
+                *[range(lo, hi + 1) for lo, hi in entry["domain"].values()]
+            )
+        )
+        actual = [tuple(int(row[p]) for p in params) for row in rows]
+        if len(set(actual)) != len(actual) or set(actual) != wanted:
+            problems.append(
+                f"{pair}: observations do not cover the domain exactly once"
+            )
         observed = {}
         for row in rows:
-            if row["same"] == "no":
+            original, edited = side(row, "orig"), side(row, "edited")
+            same = original == edited
+            if row["same"] != ("yes" if same else "no"):
+                problems.append(f"{pair}: incorrect CSV same flag")
+            if entry["category"] == "return-only" and (
+                original["outcome"] != "ok" or edited["outcome"] != "ok"
+            ):
+                problems.append(f"{pair}: return-only fault has an exceptional outcome")
+            if not same:
                 key = tuple(int(row[p]) for p in params)
                 observed[key] = {
-                    "original": side(row, "orig"),
-                    "edited": side(row, "edited"),
+                    "original": original,
+                    "edited": edited,
                 }
+        if entry["category"] == "exception" and not any(
+            c["original"]["outcome"] != c["edited"]["outcome"]
+            for c in observed.values()
+        ):
+            problems.append(f"{pair}: exception fault has no outcome difference")
 
         verdict = "changed" if observed else "preserved"
         if entry["verdict"] != verdict:
@@ -68,6 +134,8 @@ def check_verdicts(expected, problems):
             tuple(c["input"]): {"original": c["original"], "edited": c["edited"]}
             for c in entry["counterexamples"]
         }
+        if len(recorded) != len(entry["counterexamples"]):
+            problems.append(f"{pair}: duplicate counterexample input")
         for key in observed.keys() - recorded.keys():
             problems.append(
                 f"{pair}: input {key} differs but is not listed as a counterexample"
@@ -88,11 +156,11 @@ CASE_RE = re.compile(r'@Case\("\(([^)]*)\)\s*->\s*([^"]+)"\)')
 METHOD_RE = re.compile(r"public static \w+ (\w+)\(")
 
 
-def check_case_annotations(expected, problems):
+def check_case_annotations(expected, problems, *, root=ROOT):
     """Every in-domain @Case must match what the JVM actually did."""
     pending = []
     annotations = {}
-    for line in CASES.read_text().splitlines():
+    for line in (root / "cases/jpamb/cases/Refactorings.java").read_text().splitlines():
         if m := CASE_RE.search(line):
             args = tuple(int(a) for a in m.group(1).split(",") if a.strip())
             pending.append((args, m.group(2).strip()))
@@ -102,7 +170,7 @@ def check_case_annotations(expected, problems):
 
     for entry in expected["pairs"]:
         pair = entry["pair"]
-        params, rows = load_observations(pair)
+        params, rows = load_observations(pair, root=root)
         by_input = {tuple(int(r[p]) for p in params): r for r in rows}
         for method, prefix in ((pair, "orig"), (pair + "_edited", "edited")):
             for args, outcome in annotations.get(method, []):
@@ -121,6 +189,7 @@ def check_case_annotations(expected, problems):
 def main():
     expected = json.loads(EXPECTED.read_text())
     problems = []
+    check_manifest(expected, problems)
     check_verdicts(expected, problems)
     check_case_annotations(expected, problems)
 
