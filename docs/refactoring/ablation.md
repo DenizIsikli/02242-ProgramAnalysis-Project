@@ -3,7 +3,7 @@
 Run: `PYTHONPATH=solutions/static/src:src python evaluation/ablation.py [--budget N] [--csv out.csv]`
 (needs `z3-solver`; uses the committed `target/decompiled` files).
 
-Four methods on every pair (the 3 corpus pairs, 5 `Simple` pairs and 5 loop / many-path pairs from `cases/jpamb/cases/EvalPairs.java`, which is evaluation-only and not part of the shared corpus; `--timeout-ms` sets the solver timeout), on a small domain
+Four methods on every pair (the 10 corpus pairs, 5 `Simple` pairs and 5 loop / many-path pairs from `cases/jpamb/cases/EvalPairs.java`, which is evaluation-only and not part of the shared corpus; `--timeout-ms` sets the solver timeout), on a small domain
 `[-3,3]^k` (ground truth: every input executed) and a large one `[-1000,1000]^k`:
 
 | mode | what it is |
@@ -68,3 +68,16 @@ checked by sampling 2000 inputs. `unknown` is never wrong. `check_pair` and the 
   explosion win from this pair.
 - Random testing needs ~1000 runs to say nothing on the `equal` pairs and found the `d == 0`
   difference only after 306 runs on the large domain.
+
+## Full run with the 10-pair corpus (40 rows, 0 wrong)
+
+| mode | decided | wrong | mean certified coverage |
+|---|---|---|---|
+| gate | 32/40 | 0 | 79% |
+| hybrid | 38/40 | 0 | 96% |
+| z3only | 34/40 | 0 | 45% |
+| random | 18/40 | 0 | 2% |
+
+This is the table to cite: hybrid decides the most pairs and certifies the most of each domain;
+Z3 alone is faster on loop-free pairs but cannot handle loops. Reproduce with
+`PYTHONPATH=solutions/static/src:src python evaluation/ablation.py`.
