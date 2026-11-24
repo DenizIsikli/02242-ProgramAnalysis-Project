@@ -146,3 +146,44 @@ def test_exhaustive_agreement_with_checker(fake_bc):
                 assert not diff, (name, lo, hi)
             elif res.status == "differs":
                 assert diff
+
+
+# --- full-observation checker (Z3-only baseline) ------------------------------------------
+
+
+def test_observation_checker_finds_error_vs_ok_witness(fake_bc):
+    ids = fake_bc.ids
+    chk = make_return_checker(
+        fake_bc, ids["ratio"], ids["ratio_edited"], observations=True
+    )
+    res = chk(region(DOM, DOM))
+    assert res.status == "differs" and res.witness == (0, 0)
+
+
+def test_observation_checker_equal_even_with_errors(fake_bc):
+    """safeDiv pair: equal; ratio on a region excluding (0,0): equal although both can throw."""
+    ids = fake_bc.ids
+    chk = make_return_checker(
+        fake_bc, ids["safeDiv"], ids["safeDiv_edited"], observations=True
+    )
+    assert chk(region(DOM, DOM)).status == "equal"
+    chk = make_return_checker(
+        fake_bc, ids["ratio"], ids["ratio_edited"], observations=True
+    )
+    assert chk(region(Interval(1, 3), DOM)).status == "equal"
+
+
+def test_observation_checker_agrees_with_brute_force(fake_bc):
+    ids = fake_bc.ids
+    for name in ("safeDiv", "ratio", "sign"):
+        a, b = ids[name], ids[name + "_edited"]
+        chk = make_return_checker(fake_bc, a, b, observations=True)
+        arity = len(a.extension.params)
+        for lo, hi in [(-3, 3), (0, 3), (-3, -1), (0, 0), (-1, 1)]:
+            r = region(*[Interval(lo, hi)] * arity)
+            diff = any(
+                concrete_run(fake_bc, a, p) != concrete_run(fake_bc, b, p)
+                for p in itertools.product(range(lo, hi + 1), repeat=arity)
+            )
+            res = chk(r)
+            assert res.status == ("differs" if diff else "equal"), (name, lo, hi, res)
