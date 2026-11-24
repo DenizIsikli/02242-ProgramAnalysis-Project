@@ -77,4 +77,107 @@ public class Refactorings {
     if (x > 0) return 1;
     return -1;
   }
+
+  // Pair 4: removing negation changes only the return value on negative inputs.
+  @Case("(-3) -> ok")
+  @Case("(0) -> ok")
+  public static int absVal(int x) {
+    if (x < 0) return -x;
+    return x;
+  }
+
+  @Case("(-3) -> ok")
+  @Case("(0) -> ok")
+  public static int absVal_edited(int x) {
+    return x;
+  }
+
+  // Pair 5: an inclusive comparison misclassifies exactly the boundary x == 2.
+  @Case("(1) -> ok")
+  @Case("(2) -> ok")
+  public static int belowTwo(int x) {
+    if (x < 2) return 1;
+    return 0;
+  }
+
+  @Case("(1) -> ok")
+  @Case("(2) -> ok")
+  public static int belowTwo_edited(int x) {
+    if (x <= 2) return 1;
+    return 0;
+  }
+
+  // Pair 6: removing the divisor guard introduces an exception at zero.
+  @Case("(0) -> ok")
+  @Case("(2) -> ok")
+  public static int reciprocal(int x) {
+    if (x == 0) return 0;
+    return 6 / x;
+  }
+
+  @Case("(0) -> divide by zero")
+  @Case("(2) -> ok")
+  public static int reciprocal_edited(int x) {
+    return 6 / x;
+  }
+
+  // Pair 7: preserving temporary-variable elimination.
+  @Case("(-3, 3) -> ok")
+  @Case("(0, 0) -> ok")
+  public static int addTemps(int a, int b) {
+    int sum = a + b;
+    return sum;
+  }
+
+  @Case("(-3, 3) -> ok")
+  @Case("(0, 0) -> ok")
+  public static int addTemps_edited(int a, int b) {
+    return a + b;
+  }
+
+  // Pair 8: preserving removal of a pure, unused computation.
+  @Case("(-3) -> ok")
+  @Case("(3) -> ok")
+  public static int deadCode(int x) {
+    int unused = x + 100;
+    return x + 1;
+  }
+
+  @Case("(-3) -> ok")
+  @Case("(3) -> ok")
+  public static int deadCode_edited(int x) {
+    return x + 1;
+  }
+
+  // Pair 9: preserving branch inversion, including the zero boundary.
+  @Case("(-3) -> ok")
+  @Case("(0) -> ok")
+  @Case("(3) -> ok")
+  public static int absBranch(int x) {
+    if (x < 0) return -x;
+    return x;
+  }
+
+  @Case("(-3) -> ok")
+  @Case("(0) -> ok")
+  @Case("(3) -> ok")
+  public static int absBranch_edited(int x) {
+    if (x >= 0) return x;
+    return -x;
+  }
+
+  // Pair 10: preserving reversal of the maximum comparison and its branches.
+  @Case("(-3, 3) -> ok")
+  @Case("(2, 2) -> ok")
+  public static int maxBranch(int a, int b) {
+    if (a >= b) return a;
+    return b;
+  }
+
+  @Case("(-3, 3) -> ok")
+  @Case("(2, 2) -> ok")
+  public static int maxBranch_edited(int a, int b) {
+    if (a < b) return b;
+    return a;
+  }
 }

@@ -1,0 +1,352 @@
+{
+  "config": {
+    "timestamp_utc": "2026-11-23T11:53:19.719738+00:00",
+    "corpus_sha256": "1c07ad614f2241e9287fb2d9898dc72eb4e2400353faa98dbdbca68454601875",
+    "budget_seconds_per_pair_per_strategy": 5.0,
+    "budget_includes": "process startup, imports, bytecode loading, solver setup and execution",
+    "budget_excludes": "common Java compilation and reference validation",
+    "bytecode": "local javac/javap via JPAMB",
+    "seed": 0,
+    "max_inputs": 1000,
+    "max_regions": 200,
+    "baseline": "seeded differential testing using the concrete Java-int interpreter"
+  },
+  "results": [
+    {
+      "verdict": "preserved",
+      "witness": null,
+      "certified_coverage": 1.0,
+      "preserved_inputs": 49,
+      "changed_inputs": 0,
+      "unknown_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.10052187507972121,
+      "assessment": "PASS",
+      "pair": "safeDiv",
+      "strategy": "analyser",
+      "expected": "preserved",
+      "domain_size": 49
+    },
+    {
+      "verdict": "preserved",
+      "witness": null,
+      "tested_inputs": 49,
+      "tested_fraction": 1.0,
+      "certified_coverage": 1.0,
+      "inconclusive_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.09052987489849329,
+      "assessment": "PASS",
+      "pair": "safeDiv",
+      "strategy": "differential",
+      "expected": "preserved",
+      "domain_size": 49
+    },
+    {
+      "verdict": "changed",
+      "witness": [
+        0,
+        0
+      ],
+      "certified_coverage": 1.0,
+      "preserved_inputs": 48,
+      "changed_inputs": 1,
+      "unknown_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.1356436249334365,
+      "assessment": "PASS",
+      "pair": "ratio",
+      "strategy": "analyser",
+      "expected": "changed",
+      "domain_size": 49
+    },
+    {
+      "verdict": "changed",
+      "witness": [
+        0,
+        0
+      ],
+      "tested_inputs": 1,
+      "tested_fraction": 0.02040816326530612,
+      "certified_coverage": 0.02040816326530612,
+      "inconclusive_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.08788220887072384,
+      "assessment": "PASS",
+      "pair": "ratio",
+      "strategy": "differential",
+      "expected": "changed",
+      "domain_size": 49
+    },
+    {
+      "verdict": "changed",
+      "witness": [
+        0
+      ],
+      "certified_coverage": 1.0,
+      "preserved_inputs": 6,
+      "changed_inputs": 1,
+      "unknown_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.09607820794917643,
+      "assessment": "PASS",
+      "pair": "sign",
+      "strategy": "analyser",
+      "expected": "changed",
+      "domain_size": 7
+    },
+    {
+      "verdict": "changed",
+      "witness": [
+        0
+      ],
+      "tested_inputs": 2,
+      "tested_fraction": 0.2857142857142857,
+      "certified_coverage": 0.2857142857142857,
+      "inconclusive_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.09807929210364819,
+      "assessment": "PASS",
+      "pair": "sign",
+      "strategy": "differential",
+      "expected": "changed",
+      "domain_size": 7
+    },
+    {
+      "verdict": "changed",
+      "witness": [
+        -3
+      ],
+      "certified_coverage": 1.0,
+      "preserved_inputs": 4,
+      "changed_inputs": 3,
+      "unknown_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.09489737497642636,
+      "assessment": "PASS",
+      "pair": "absVal",
+      "strategy": "analyser",
+      "expected": "changed",
+      "domain_size": 7
+    },
+    {
+      "verdict": "changed",
+      "witness": [
+        -3
+      ],
+      "tested_inputs": 4,
+      "tested_fraction": 0.5714285714285714,
+      "certified_coverage": 0.5714285714285714,
+      "inconclusive_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.08773612487129867,
+      "assessment": "PASS",
+      "pair": "absVal",
+      "strategy": "differential",
+      "expected": "changed",
+      "domain_size": 7
+    },
+    {
+      "verdict": "changed",
+      "witness": [
+        2
+      ],
+      "certified_coverage": 1.0,
+      "preserved_inputs": 6,
+      "changed_inputs": 1,
+      "unknown_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.09859595820307732,
+      "assessment": "PASS",
+      "pair": "belowTwo",
+      "strategy": "analyser",
+      "expected": "changed",
+      "domain_size": 7
+    },
+    {
+      "verdict": "changed",
+      "witness": [
+        2
+      ],
+      "tested_inputs": 3,
+      "tested_fraction": 0.42857142857142855,
+      "certified_coverage": 0.42857142857142855,
+      "inconclusive_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.08749641594476998,
+      "assessment": "PASS",
+      "pair": "belowTwo",
+      "strategy": "differential",
+      "expected": "changed",
+      "domain_size": 7
+    },
+    {
+      "verdict": "changed",
+      "witness": [
+        0
+      ],
+      "certified_coverage": 1.0,
+      "preserved_inputs": 6,
+      "changed_inputs": 1,
+      "unknown_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.09460562490858138,
+      "assessment": "PASS",
+      "pair": "reciprocal",
+      "strategy": "analyser",
+      "expected": "changed",
+      "domain_size": 7
+    },
+    {
+      "verdict": "changed",
+      "witness": [
+        0
+      ],
+      "tested_inputs": 2,
+      "tested_fraction": 0.2857142857142857,
+      "certified_coverage": 0.2857142857142857,
+      "inconclusive_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.08841991703957319,
+      "assessment": "PASS",
+      "pair": "reciprocal",
+      "strategy": "differential",
+      "expected": "changed",
+      "domain_size": 7
+    },
+    {
+      "verdict": "preserved",
+      "witness": null,
+      "certified_coverage": 1.0,
+      "preserved_inputs": 49,
+      "changed_inputs": 0,
+      "unknown_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.09099595807492733,
+      "assessment": "PASS",
+      "pair": "addTemps",
+      "strategy": "analyser",
+      "expected": "preserved",
+      "domain_size": 49
+    },
+    {
+      "verdict": "preserved",
+      "witness": null,
+      "tested_inputs": 49,
+      "tested_fraction": 1.0,
+      "certified_coverage": 1.0,
+      "inconclusive_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.08983412501402199,
+      "assessment": "PASS",
+      "pair": "addTemps",
+      "strategy": "differential",
+      "expected": "preserved",
+      "domain_size": 49
+    },
+    {
+      "verdict": "preserved",
+      "witness": null,
+      "certified_coverage": 1.0,
+      "preserved_inputs": 7,
+      "changed_inputs": 0,
+      "unknown_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.0910446671769023,
+      "assessment": "PASS",
+      "pair": "deadCode",
+      "strategy": "analyser",
+      "expected": "preserved",
+      "domain_size": 7
+    },
+    {
+      "verdict": "preserved",
+      "witness": null,
+      "tested_inputs": 7,
+      "tested_fraction": 1.0,
+      "certified_coverage": 1.0,
+      "inconclusive_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.08659795811399817,
+      "assessment": "PASS",
+      "pair": "deadCode",
+      "strategy": "differential",
+      "expected": "preserved",
+      "domain_size": 7
+    },
+    {
+      "verdict": "preserved",
+      "witness": null,
+      "certified_coverage": 1.0,
+      "preserved_inputs": 7,
+      "changed_inputs": 0,
+      "unknown_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.0934015829116106,
+      "assessment": "PASS",
+      "pair": "absBranch",
+      "strategy": "analyser",
+      "expected": "preserved",
+      "domain_size": 7
+    },
+    {
+      "verdict": "preserved",
+      "witness": null,
+      "tested_inputs": 7,
+      "tested_fraction": 1.0,
+      "certified_coverage": 1.0,
+      "inconclusive_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.08702533296309412,
+      "assessment": "PASS",
+      "pair": "absBranch",
+      "strategy": "differential",
+      "expected": "preserved",
+      "domain_size": 7
+    },
+    {
+      "verdict": "preserved",
+      "witness": null,
+      "certified_coverage": 1.0,
+      "preserved_inputs": 49,
+      "changed_inputs": 0,
+      "unknown_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.09210845781490207,
+      "assessment": "PASS",
+      "pair": "maxBranch",
+      "strategy": "analyser",
+      "expected": "preserved",
+      "domain_size": 49
+    },
+    {
+      "verdict": "preserved",
+      "witness": null,
+      "tested_inputs": 49,
+      "tested_fraction": 1.0,
+      "certified_coverage": 1.0,
+      "inconclusive_inputs": 0,
+      "status": "COMPLETED",
+      "elapsed_s": 0.08916266704909503,
+      "assessment": "PASS",
+      "pair": "maxBranch",
+      "strategy": "differential",
+      "expected": "preserved",
+      "domain_size": 49
+    }
+  ],
+  "summary": {
+    "analyser": {
+      "PASS": 10,
+      "WRONG": 0,
+      "INCOMPLETE": 0,
+      "ERROR": 0
+    },
+    "differential": {
+      "PASS": 10,
+      "WRONG": 0,
+      "INCOMPLETE": 0,
+      "ERROR": 0
+    }
+  }
+}

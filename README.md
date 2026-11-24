@@ -80,6 +80,67 @@ and corpus that lists the unresolved correctness issues, the
 [soundness notes](docs/refactoring/soundness-notes.md) for the interval
 operations, and the [review of PR 2](docs/refactoring/pr2-review.md).
 
+## Behaviour-preservation corpus evaluation
+
+The standalone corpus in [Refactorings.java](cases/jpamb/cases/Refactorings.java)
+contains **10 pairs**: 3 return-only faults, 2 exception faults and 5 preserving
+rewrites. Domains are declared in [pairs.txt](evaluation/pairs.txt); the independent
+answer key is [expected.json](evaluation/expected/expected.json).
+There are 238 input vectors in total.
+
+Regenerate exhaustive real-JVM observations and check the answer key:
+
+```sh
+bash evaluation/observe.sh
+python evaluation/check_expected.py
+```
+
+With the existing static solution dependencies available in your Python environment,
+run the pair-level harness and differential-testing baseline:
+
+```sh
+PYTHONPATH=solutions/static/src:src python solutions/static/src/check_pairs.py \
+  --budget-seconds 5 --seed 0 --json evaluation/baseline.json
+```
+
+The harness uses JPAMB's bytecode model and the existing interval/region/Z3 analyser.
+By default, it compiles the current corpus into a temporary directory with `javac`
+and decodes its integer-only instructions with `javap`, using
+[corpus_bytecode.py](solutions/static/src/corpus_bytecode.py). Both commands are
+part of the JDK; no new packages or Docker are needed for this standalone evaluation.
+Unsupported instructions and exception handlers are errors, never silently ignored.
+`--committed-bytecode` instead uses the normal JPAMB JSON artifacts, which must
+first be regenerated with `jpamb build` after changing Java sources.
+
+The baseline samples inputs without replacement with a recorded seed and compares
+both outcomes **and return values**, using the existing concrete Java-int interpreter.
+Its observations are exhaustively tested against the real-JVM CSVs. A mismatch
+produces a witness; a partial sample without a mismatch is `unknown`, not
+`preserved`. Only exhaustive, conclusive testing can establish preservation on
+the finite domain. Interpreter step exhaustion is also inconclusive.
+
+Both strategies have the **same per-pair subprocess wall-clock timeout**. Imports,
+bytecode loading and solver setup are timed; common compilation and answer-key
+validation are not. `--max-inputs` and `--max-regions` are additional work caps,
+not equivalent units of work. Process scheduling/termination overhead can make
+reported elapsed time slightly exceed the timeout. A timed-out process returns
+no partial coverage.
+
+Results distinguish `PASS`, `WRONG`, `INCOMPLETE` and `ERROR`; `unknown` is incomplete,
+not a false verdict, and a crash is an error, not `unknown`. Witnesses must belong
+to the declared domain and match a real-JVM observation that differs.
+The command exits nonzero for wrong verdicts, invalid witnesses, or worker errors.
+Use `--pair NAME` for one pair; the JSON report records configuration, elapsed
+times, verdicts, witnesses, certified coverage and baseline input counts.
+
+Focused evaluation tests:
+
+```sh
+PYTHONPATH=solutions/static/src:src python -m pytest \
+  solutions/static/tests/test_pair_harness.py \
+  solutions/static/tests/test_real_corpus.py -q
+```
+
 ## Supported Languages
 
 You can write your analysis in any language you like, however, we have bindings

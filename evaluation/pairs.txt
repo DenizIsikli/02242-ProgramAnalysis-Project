@@ -5,3 +5,10 @@
 safeDiv  -3  3
 ratio    -3  3
 sign     -3  3
+absVal   -3  3
+belowTwo -3  3
+reciprocal -3 3
+addTemps -3 3
+deadCode -3 3
+absBranch -3 3
+maxBranch -3 3
