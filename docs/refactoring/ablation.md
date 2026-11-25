@@ -81,3 +81,20 @@ checked by sampling 2000 inputs. `unknown` is never wrong. `check_pair` and the 
 This is the table to cite: hybrid decides the most pairs and certifies the most of each domain;
 Z3 alone is faster on loop-free pairs but cannot handle loops. Reproduce with
 `PYTHONPATH=solutions/static/src:src python evaluation/ablation.py`.
+
+## Variance: seeds and repeated timings
+
+`PYTHONPATH=solutions/static/src:src python evaluation/seed_stats.py [--seeds 20] [--repeats 5]`
+runs seeded random testing 20 times on every pair that really differs, and repeats every hybrid
+and Z3-only timing five times. Measured on an Intel Core i5-1038NG7 (16 GB, macOS 26.5), Python
+3.13.5, Z3 5.4.1.
+
+- **Detection (19 differing pair/domain runs, 380 seeded runs):** 285 found a difference (75%).
+  On the small domain 180/180. On the large domain 105/200 (53%): `ratio` 0/20 (one differing
+  input out of 4,004,001), `sign`, `reciprocal`, both `checkBeforeDivideByN` 6/20, `loopDiv_guarded`
+  9/20, `belowTwo` 12/20, `absVal`, `justAdd~justMulitply`, `ladder_changed` 20/20.
+- **Timings are stable:** total over all 40 runs, median of five repeats: hybrid 8.85 s
+  [8.33, 10.19], Z3 only 2.42 s [2.28, 2.64].
+- **Z3 only has the lower median on 26 of 40 runs** (four of them loop runs where it gives up at
+  once), the hybrid on 11, 3 ties. The hybrid's worst case is `justAdd~justMulitply` on the large
+  domain: 3.7 s against 0.07 s.

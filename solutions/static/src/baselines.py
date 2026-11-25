@@ -98,3 +98,31 @@ def exhaustive(
             count += 1
             first = first or args
     return count > 0, count, first
+
+
+def seed_statistics(
+    bc: jpamb.Bytecode,
+    original: jvm.AbsMethodID,
+    edited: jvm.AbsMethodID,
+    domain: Region,
+    seeds: int = 20,
+    budget: int = 1000,
+) -> dict:
+    """Run `random_testing` with seeds 0..seeds-1 and summarise how often it finds a difference.
+
+    Returns the number of seeds that found one, the executions needed by each finder, and
+    the executions used by seeds that found nothing (always `budget`).
+    """
+    found: list[int] = []
+    for seed in range(seeds):
+        v = random_testing(bc, original, edited, domain, budget, seed)
+        if v.overall == "changed":
+            found.append(v.stats.executions)
+    ordered = sorted(found)
+    return {
+        "seeds": seeds,
+        "detected": len(found),
+        "rate": len(found) / seeds,
+        "median_runs": ordered[len(ordered) // 2] if ordered else None,
+        "runs_to_find": found,
+    }
