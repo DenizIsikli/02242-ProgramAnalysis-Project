@@ -88,7 +88,7 @@ Observations with different outcome classes are different. ∎
 - This rule is stronger than `changed` needs: it proves a change on every input,
   not just one. If the evaluation counts *decided inputs*, it can count all of
   `R` as decided. A `changed` verdict from Rule 3′ only decides the witness
-  point (see review issue C6).
+  point.
 - Rule 0 must run first. With `Â(R) = ∅`, Rule 2 would fire vacuously and
   report a change backed by nothing.
 - A convenient witness is the lower corner `(min R1, …, min Rn)`. The harness
@@ -192,7 +192,7 @@ implementation:
 
 The implementation is
 [symbolic.py](../../solutions/static/src/symbolic.py). It meets all five
-conditions (see [pr2-review.md](pr2-review.md)). Two details:
+conditions (see [review.md](review.md) §3). Two details:
 
 - Condition 3 is enforced twice. Backward jumps raise "unsupported", and before
   trusting UNSAT the checker also asks z3 whether the collected `ok` paths cover
@@ -244,5 +244,5 @@ From the region verdicts `{(R_k, v_k)}`:
   regions is the *certified coverage*.
 
 Regions produced by refinement must be pairwise disjoint and together cover the
-region they split. Otherwise coverage double-counts or misses inputs (review
-issue I5).
+region they split. Otherwise coverage double-counts or misses inputs. `split_region` guarantees
+both (`test_split_is_disjoint_cover`).

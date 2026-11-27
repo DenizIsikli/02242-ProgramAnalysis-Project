@@ -3,8 +3,8 @@
 These notes argue that the operations Krish added in
 [abstractions.py](../../solutions/static/src/abstractions.py) and
 [region_analysis.py](../../solutions/static/src/region_analysis.py) are sound.
-They close review issues I1–I3 ([review.md](review.md)) and are the groundwork
-for the TAB proof.
+They are the groundwork for the TAB proof, and [review.md](review.md) checks the
+implementation against them.
 
 **Soundness condition.** It is the one from the lecture, over Java `int`s
 (32-bit, wrapping). For an operation `op` with abstract version `op♯`, for all
@@ -27,7 +27,7 @@ matching outcome. Below, `X = [a, b]` and `Y = [c, d]` are non-empty, and
   and random members, for every operation and every comparison. That is about
   3.9 million checks, with no failures.
 
-## 1. Overflow rule (I3: resolved)
+## 1. Overflow rule
 
 `_checked(lo, hi)` returns `⊤` whenever a mathematical bound leaves the `int`
 range, and the exact interval otherwise.
@@ -37,12 +37,12 @@ mathematical result is in range. For results in range, the Java result equals
 the mathematical one. Otherwise `⊤` contains every `int`, wrapped results
 included.
 
-The risk named in I3 was the constructor's clipping, which silently drops
+The risk to watch is the constructor's clipping, which silently drops
 wrapped values. `Add`, `Sub`, `Mul` and `Neg` all go through `_checked`. `Div`
 and `Rem` produce in-range bounds by construction (§3, §4), and `MIN / −1` is
 handled explicitly. So no operation passes unchecked bounds to the constructor.
 In `refine` the clipping is *wanted*: a bound like `d − 1 < MIN` means "no
-`int` is that small", and an empty result is correct there. **I3 is resolved.**
+`int` is that small", and an empty result is correct there.
 
 ## 2. `Mul`
 
@@ -53,7 +53,7 @@ are at `x = a` or `x = b`. Likewise in `y`. So the extremes of the mathematical
 product over the box are among the four corners, and `x·y ∈ [min P, max P]`.
 The overflow rule (§1) then covers wrapping. ∎
 
-## 3. `Div` (I1)
+## 3. `Div`
 
 **Error set.** Java throws `ArithmeticException` iff `y = 0`. The code adds
 `divide by zero` iff `c ≤ 0 ≤ d`, which is exactly "some `y ∈ Y` is `0`". This is
@@ -80,7 +80,7 @@ Fix a part with constant sign, and write `q(x, y) = trunc(x / y)`:
 with one exception: `MIN / −1`. Mathematically that is `2³¹`, and Java wraps it to
 `MIN`. `_div_part` returns `⊤` whenever `a = MIN` and `−1` is in the part. ∎
 
-## 4. `Rem` (I1)
+## 4. `Rem`
 
 Java defines `x % y = x − trunc(x / y)·y`. For `y ≠ 0` it satisfies:
 
@@ -105,7 +105,7 @@ correct. The error set is the same as for `Div`. ∎
 is `x = MIN` (`−MIN = 2³¹`, which wraps to `MIN`). `_checked(−b, −a)` turns that into
 `⊤`. ∎
 
-## 6. `refine` (I2)
+## 6. `refine`
 
 **Claim.** For every `x ∈ X`, `y ∈ Y` with `(x cond y) = holds`, the result
 `(X', Y') = X.refine(Y, cond, holds)` satisfies `x ∈ X'` and `y ∈ Y'`. An empty `X'`
@@ -133,8 +133,8 @@ compared stack value is tagged `src = i`. This is sound because the tag means
 - A join keeps a tag only if both sides have the same one.
 
 So at the branch, the concrete local equals the concrete stack value, and the
-condition holds for both. This is exactly the dependency problem the review
-warned about in I2, and the tag handles it correctly.
+condition holds for both. This handles the dependency problem from the
+unbounded-analysis lecture: refining a stack copy alone would not refine the local.
 
 `refine_local` *replaces* the local with the refined copy instead of meeting
 with it. That is still sound, because the copy over-approximates the local.
