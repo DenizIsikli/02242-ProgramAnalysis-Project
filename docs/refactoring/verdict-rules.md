@@ -202,6 +202,12 @@ conditions (see [pr2-review.md](pr2-review.md)). Two details:
   `int` semantics (`concrete_run`), not the JVM. The evaluation harness then
   checks every witness against the real-JVM observations (contract §5.1,
   [test_real_corpus.py](../../solutions/static/tests/test_real_corpus.py)).
+- `make_return_checker(..., observations=True)` also encodes the
+  `divide by zero` and `assertion error` paths and compares whole observations.
+  It is used only for the evaluation's "Z3 only" baseline, which runs without the
+  interval gate. The default mode used by Rules 3/3′ is unchanged. The extended
+  mode keeps the same guarantees: the coverage check includes the error paths,
+  different outcome classes count as a mismatch, and a model still has to replay.
 
 ## 6. Why the singleton condition is needed
 

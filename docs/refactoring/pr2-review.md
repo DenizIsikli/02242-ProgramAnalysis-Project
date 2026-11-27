@@ -115,3 +115,6 @@ this case, but the guard costs one condition.
   JSON files are committed, so the analyser and tests already work without it.
 - A regional checker in the harness (C3) is partly covered by
   `test_real_corpus.py`. Cristina's pair-level harness can reuse its comparison.
+
+Update 2026-11-24: C3 is resolved by `check_pairs.py`. C1 is still open, because
+`Refactorings` is not registered in `Runtime.java`. See [review.md](review.md).

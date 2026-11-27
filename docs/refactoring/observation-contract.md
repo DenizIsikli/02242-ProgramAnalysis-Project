@@ -76,8 +76,8 @@ syntactic pass over the decompiled bytecode can check all of them.
 
 1. **Static**, with only parameters of type `int` (JVM `I`). `boolean`, `byte`,
    `char` and `short` (`Z B C S`) are integers on the JVM stack and may be added
-   later with the matching interval bounds. Today the corpus, `Region` and
-   `Observe.java` only support `int`.
+   later with the matching interval bounds. The analyser already accepts
+   `boolean` parameters, but the corpus and `Observe.java` only use `int`.
 2. **Return type** `int` or `void`.
 3. **Allowed instructions:** `Push` (int constants), `Load`/`Store` (int locals),
    `Incr`, `Dup`, `Negate`, `Binary` on ints (`add sub mul div rem`), `Ifz`,
@@ -94,11 +94,12 @@ syntactic pass over the decompiled bytecode can check all of them.
 6. **Same descriptor** for `m` and `m_edited`, so one region describes the
    inputs of both.
 
-**Loop-free first.** The first evaluation round also requires an acyclic
-control-flow graph (no backward `Goto`/`If`/`Ifz`). Loops are supported once
-the interval analysis has a widening operator. The rules in
+**Loops.** The interval analysis supports loops through widening
+([soundness-notes.md](soundness-notes.md) §7). The rules in
 [verdict-rules.md](verdict-rules.md) do not change, but outcome `*` becomes
-reachable.
+reachable. The Z3 return comparator is still loop-free: a backward jump makes
+it answer `unknown`. So loop pairs are decided only by Rules 1, 2 and 2b (for
+example `loopThenZero` in `EvalPairs.java`).
 
 ## 4. Excluded
 
