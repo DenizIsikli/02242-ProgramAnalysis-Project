@@ -83,3 +83,26 @@ def test_ablation_script_runs_and_nothing_is_wrong(capsys):
     assert ablation.main(["--budget", "50", "--root", str(ROOT)]) == 0
     out = capsys.readouterr().out
     assert "### summary" in out and "WRONG" not in out
+
+
+def test_seed_statistics_counts_finders(fake_bc):
+    """`sign` differs on x = 0 and x = -1... with 200 runs over [-3,3] every seed finds it."""
+    from baselines import seed_statistics
+
+    ids = fake_bc.ids
+    s = seed_statistics(
+        fake_bc, ids["sign"], ids["sign_edited"], region(DOM), seeds=5, budget=200
+    )
+    assert s["seeds"] == 5 and s["detected"] == 5 and s["rate"] == 1.0
+    assert len(s["runs_to_find"]) == 5 and s["median_runs"] is not None
+
+    # `ratio` differs on one input of 49: a budget of 1 misses it for most seeds.
+    s = seed_statistics(
+        fake_bc,
+        ids["ratio"],
+        ids["ratio_edited"],
+        region(DOM, DOM),
+        seeds=20,
+        budget=1,
+    )
+    assert s["detected"] < 20
